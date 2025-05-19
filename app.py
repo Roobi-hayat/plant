@@ -286,7 +286,7 @@ class PlantDiseaseDetector:
     def load_class_names(self):
         """Load class names from file."""
         try:
-            with open('models/class_names.txt', 'r') as f:
+            with open("class_names.txt", "r") as f:
                 self.class_names = [line.strip() for line in f.readlines()]
             print(f"Loaded {len(self.class_names)} classes")
         except FileNotFoundError:
@@ -295,7 +295,7 @@ class PlantDiseaseDetector:
     def load_trained_model(self):
         """Load a pre-trained model."""
         try:
-            self.model = load_model(MODEL_PATH)
+            self.model = load_model("plant_disease_model.h5")
             self.load_class_names()
             print(f"Model loaded from {MODEL_PATH}")
             return True
