@@ -665,16 +665,39 @@ def main():
         st.write("#### Camera Input")
         st.write("Please allow camera access when prompted. The app will try to use your rear camera by default.")
         
-        # Use our custom camera component
-        captured_image = custom_camera_component()
-        
-        # Check if we have a captured image
-        if captured_image:
-            # Display the captured image
-            if ',' in captured_image:
-               base64_data = captured_image.split(',')[1]
-            else:
-               base64_data = captured_image
+captured_image = st.session_state.get("captured_image")
+
+if isinstance(captured_image, str) and ',' in captured_image:
+    try:
+        base64_data = captured_image.split(',')[1]
+        image_bytes = base64.b64decode(base64_data)
+        image = Image.open(BytesIO(image_bytes))
+        st.image(image, caption="Captured Image", use_column_width=True)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
+            tmp_file.write(image_bytes)
+            image_path = tmp_file.name
+
+        with st.spinner('Analyzing image...'):
+            predicted_class, confidence, tips = detector.predict(image_path)
+
+        if predicted_class:
+            st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
+            st.markdown("---")
+            st.markdown("### Treatment Tips")
+            st.info(tips['treatment'])
+
+            st.markdown("### Prevention Advice")
+            st.warning(tips['prevention'])
+        else:
+            st.warning("Could not make a prediction. Please try another image.")
+
+    except Exception as e:
+        st.error(f"Error processing image: {str(e)}")
+        print(traceback.format_exc())
+else:
+    st.warning("No image captured. Please take a photo first.")
+
 
             image_bytes = base64.b64decode(base64_data)
             image = Image.open(io.BytesIO(image_bytes))
