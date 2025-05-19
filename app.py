@@ -437,132 +437,205 @@ class PlantDiseaseDetector:
 
 def custom_camera_component():
     """Create a custom camera component with JavaScript that prefers the back camera"""
-    # Container to hold our custom camera
-    camera_container = st.empty()
+    import streamlit.components.v1 as components
     
-    # Create a custom camera interface using HTML/JS/CSS via st.components.html
+    # Create a custom camera interface using HTML/JS/CSS
     custom_camera_html = """
-    <div class="camera-container">
-        <video id="video-element" autoplay playsinline></video>
-        <canvas id="canvas-element"></canvas>
-        <div class="placeholder-text" id="camera-placeholder">Camera loading...</div>
-        <div class="camera-controls">
-            <button id="camera-button" style="display:none;">Capture Photo</button>
-            <button id="switch-camera-button" style="display:none;">Switch Camera</button>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body { margin: 0; padding: 0; }
+            .camera-container {
+                width: 100%;
+                margin: 0 auto;
+                border: 1px solid #ddd;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            #video-element {
+                width: 100%;
+                max-height: 450px;
+                background-color: #f0f0f0;
+                border-radius: 8px;
+                object-fit: cover;
+            }
+            .camera-controls {
+                display: flex;
+                justify-content: center;
+                margin-top: 15px;
+                gap: 10px;
+                padding-bottom: 15px;
+            }
+            #canvas-element {
+                display: none;
+            }
+            #camera-button, #switch-camera-button {
+                background-color: #2E8B57;
+                color: white;
+                padding: 8px 16px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            #camera-button:hover, #switch-camera-button:hover {
+                background-color: #3CB371;
+            }
+            .placeholder-text {
+                text-align: center;
+                padding: 40px 0;
+                color: #666;
+            }
+            #captured-preview {
+                display: none;
+                width: 100%;
+                max-height: 450px;
+                object-fit: contain;
+                border-radius: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="camera-container">
+            <video id="video-element" autoplay playsinline></video>
+            <canvas id="canvas-element"></canvas>
+            <img id="captured-preview" />
+            <div class="placeholder-text" id="camera-placeholder">Camera loading...</div>
+            <div class="camera-controls">
+                <button id="camera-button" style="display:none;">Capture Photo</button>
+                <button id="switch-camera-button" style="display:none;">Switch Camera</button>
+            </div>
         </div>
-    </div>
 
-    <script>
-        // Global variables
-        let videoElement = document.getElementById('video-element');
-        let canvasElement = document.getElementById('canvas-element');
-        let cameraButton = document.getElementById('camera-button');
-        let switchCameraButton = document.getElementById('switch-camera-button');
-        let placeholder = document.getElementById('camera-placeholder');
-        let stream = null;
-        let facingMode = "environment"; // Start with back camera
-        let capturedImage = null;
-        
-        // Initialize the camera when the page loads
-        document.addEventListener('DOMContentLoaded', initCamera);
-        
-        // Initialize the camera
-        async function initCamera() {
-            try {
-                // Try to get access to the back camera first
-                const constraints = {
-                    video: {
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
+        <script>
+            // Global variables
+            const videoElement = document.getElementById('video-element');
+            const canvasElement = document.getElementById('canvas-element');
+            const capturedPreview = document.getElementById('captured-preview');
+            const cameraButton = document.getElementById('camera-button');
+            const switchCameraButton = document.getElementById('switch-camera-button');
+            const placeholder = document.getElementById('camera-placeholder');
+            let stream = null;
+            let facingMode = "environment"; // Start with back camera
+            let capturedImage = null;
+            
+            // Initialize the camera as soon as the page loads
+            initCamera();
+            
+            // Initialize the camera
+            async function initCamera() {
+                try {
+                    // Try to get access to the back camera first
+                    const constraints = {
+                        video: {
+                            facingMode: facingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    cameraButton.style.display = 'inline-block';
+                    
+                    // Check if multiple cameras are available
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    
+                    if (videoDevices.length > 1) {
+                        switchCameraButton.style.display = 'inline-block';
                     }
-                };
-                
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                videoElement.srcObject = stream;
-                videoElement.style.display = 'block';
-                placeholder.style.display = 'none';
-                cameraButton.style.display = 'inline-block';
-                
-                // Check if multiple cameras are available
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                if (videoDevices.length > 1) {
-                    switchCameraButton.style.display = 'inline-block';
+                    
+                } catch (error) {
+                    console.error('Error accessing camera:', error);
+                    placeholder.textContent = 'Error accessing camera. Please check permissions.';
+                    placeholder.style.color = 'red';
+                }
+            }
+            
+            // Switch between front and back cameras
+            switchCameraButton.addEventListener('click', async () => {
+                if (stream) {
+                    // Stop all tracks in the current stream
+                    stream.getTracks().forEach(track => track.stop());
                 }
                 
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                placeholder.textContent = 'Error accessing camera. Please check permissions.';
-                placeholder.style.color = 'red';
-            }
-        }
-        
-        // Switch between front and back cameras
-        switchCameraButton.addEventListener('click', async () => {
-            if (stream) {
-                // Stop all tracks in the current stream
-                stream.getTracks().forEach(track => track.stop());
-            }
-            
-            // Toggle facing mode
-            facingMode = facingMode === "environment" ? "user" : "environment";
-            placeholder.textContent = 'Switching camera...';
-            placeholder.style.display = 'block';
-            videoElement.style.display = 'none';
-            
-            try {
-                const constraints = {
-                    video: {
-                        facingMode: facingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                };
+                // Toggle facing mode
+                facingMode = facingMode === "environment" ? "user" : "environment";
+                placeholder.textContent = 'Switching camera...';
+                placeholder.style.display = 'block';
+                videoElement.style.display = 'none';
                 
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
-                videoElement.srcObject = stream;
-                videoElement.style.display = 'block';
-                placeholder.style.display = 'none';
+                try {
+                    const constraints = {
+                        video: {
+                            facingMode: facingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    videoElement.srcObject = stream;
+                    videoElement.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    
+                } catch (error) {
+                    console.error('Error switching camera:', error);
+                    placeholder.textContent = 'Error switching camera.';
+                    placeholder.style.color = 'red';
+                }
+            });
+            
+            // Capture a photo when the button is clicked
+            cameraButton.addEventListener('click', () => {
+                if (!stream) return;
                 
-            } catch (error) {
-                console.error('Error switching camera:', error);
-                placeholder.textContent = 'Error switching camera.';
-                placeholder.style.color = 'red';
-            }
-        });
-        
-        // Capture a photo when the button is clicked
-        cameraButton.addEventListener('click', () => {
-            const context = canvasElement.getContext('2d');
-            canvasElement.width = videoElement.videoWidth;
-            canvasElement.height = videoElement.videoHeight;
-            context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-            
-            // Convert canvas to data URL
-            capturedImage = canvasElement.toDataURL('image/jpeg');
-            
-            // Send to Streamlit
-            if (window.parent) {
-                const data = {
-                    image: capturedImage,
-                    timestamp: Date.now()
-                };
-                window.parent.postMessage({type: "streamlit:setComponentValue", value: data}, "*");
-            }
-        });
-    </script>
+                const context = canvasElement.getContext('2d');
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+                context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+                
+                // Convert canvas to data URL
+                capturedImage = canvasElement.toDataURL('image/jpeg');
+                
+                // Show preview of captured image
+                capturedPreview.src = capturedImage;
+                capturedPreview.style.display = 'block';
+                videoElement.style.display = 'none';
+                
+                // Send to Streamlit
+                window.parent.postMessage({
+                    type: "streamlit:setComponentValue",
+                    value: capturedImage
+                }, "*");
+            });
+        </script>
+    </body>
+    </html>
     """
     
-    # Use a component container to display the HTML
-    component_value = camera_container.components.html(
+    # Create a key for session state to store our captured image
+    if 'captured_image' not in st.session_state:
+        st.session_state.captured_image = None
+    
+    # Use streamlit components v1 to create the HTML component
+    captured_image = components.html(
         custom_camera_html,
         height=600,
+        scrolling=False
     )
     
-    # Return the captured image data if available
-    return component_value
+    # If we got a result (captured image), store it in session state
+    if captured_image:
+        st.session_state.captured_image = captured_image
+    
+    # Return the captured image
+    return st.session_state.captured_image
 
 
 def main():
@@ -593,16 +666,14 @@ def main():
         st.write("Please allow camera access when prompted. The app will try to use your rear camera by default.")
         
         # Use our custom camera component
-        camera_result = custom_camera_component()
+        captured_image = custom_camera_component()
         
         # Check if we have a captured image
-        if camera_result and 'image' in camera_result:
-            captured_image = camera_result['image']
-            
+        if captured_image:
             # Display the captured image
             st.image(captured_image, caption="Captured Image", use_column_width=True)
             
-            # Save to temp file and process
+            # Process the image
             try:
                 # Extract the base64 part (remove prefix if present)
                 if ',' in captured_image:
