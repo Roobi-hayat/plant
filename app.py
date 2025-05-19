@@ -671,18 +671,19 @@ def main():
         # Check if we have a captured image
         if captured_image:
             # Display the captured image
-            st.image(captured_image, caption="Captured Image", use_column_width=True)
+            if ',' in captured_image:
+               base64_data = captured_image.split(',')[1]
+            else:
+               base64_data = captured_image
+
+            image_bytes = base64.b64decode(base64_data)
+            image = Image.open(io.BytesIO(image_bytes))
+
+            # Display image
+            st.image(image, caption="Captured Image", use_column_width=True)
             
             # Process the image
             try:
-                # Extract the base64 part (remove prefix if present)
-                if ',' in captured_image:
-                    base64_data = captured_image.split(',')[1]
-                else:
-                    base64_data = captured_image
-                
-                # Decode and save to temp file
-                image_data = base64.b64decode(base64_data)
                 with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
                     tmp_file.write(image_data)
                     image_path = tmp_file.name
