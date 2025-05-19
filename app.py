@@ -71,49 +71,23 @@ st.markdown("""
         background-color: #3CB371;
         color: white;
     }
-    /* Custom styles for camera container */
     .camera-container {
         width: 100%;
+        max-width: 640px;
         margin: 0 auto;
-        border: 1px solid #ddd;
-        border-radius: 10px;
-        overflow: hidden;
+        position: relative;
     }
     #video-element {
         width: 100%;
-        max-height: 500px;
-        background-color: #f0f0f0;
-        border-radius: 8px;
-    }
-    .camera-controls {
-        display: flex;
-        justify-content: center;
-        margin-top: 15px;
-        gap: 10px;
+        border-radius: 10px;
+        border: 2px solid #2E8B57;
     }
     #canvas-element {
         display: none;
     }
-    #camera-button, #switch-camera-button {
-        background-color: #2E8B57;
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 16px;
-    }
-    #camera-button:hover, #switch-camera-button:hover {
-        background-color: #3CB371;
-    }
-    .placeholder-text {
+    .capture-btn {
+        margin-top: 10px;
         text-align: center;
-        padding: 40px 0;
-        color: #666;
-    }
-    .loading-spinner {
-        text-align: center;
-        padding: 20px 0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -315,6 +289,7 @@ class PlantDiseaseDetector:
         )
         
         self.save_class_names()
+        self.plot_training_history(history)
         self.evaluate(validation_generator)
         
         return history
@@ -322,7 +297,7 @@ class PlantDiseaseDetector:
     def save_class_names(self):
         """Save class names to a file."""
         os.makedirs('models', exist_ok=True)
-        with open('models/class_names.txt', 'w') as f:
+        with open("class_names.txt", "r") as f:
             for class_name in self.class_names:
                 f.write(f"{class_name}\n")
         print(f"Class names saved to models/class_names.txt")
@@ -330,7 +305,7 @@ class PlantDiseaseDetector:
     def load_class_names(self):
         """Load class names from file."""
         try:
-            with open("class_names.txt", "r") as f:
+            with open('models/class_names.txt', 'r') as f:
                 self.class_names = [line.strip() for line in f.readlines()]
             print(f"Loaded {len(self.class_names)} classes")
         except FileNotFoundError:
@@ -435,209 +410,6 @@ class PlantDiseaseDetector:
             else:
                 return class_name.replace('_', ' ')
 
-def custom_camera_component():
-    """Create a custom camera component with JavaScript that prefers the back camera"""
-    import streamlit.components.v1 as components
-    
-    # Create a custom camera interface using HTML/JS/CSS
-    custom_camera_html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body { margin: 0; padding: 0; }
-            .camera-container {
-                width: 100%;
-                margin: 0 auto;
-                border: 1px solid #ddd;
-                border-radius: 10px;
-                overflow: hidden;
-            }
-            #video-element {
-                width: 100%;
-                max-height: 450px;
-                background-color: #f0f0f0;
-                border-radius: 8px;
-                object-fit: cover;
-            }
-            .camera-controls {
-                display: flex;
-                justify-content: center;
-                margin-top: 15px;
-                gap: 10px;
-                padding-bottom: 15px;
-            }
-            #canvas-element {
-                display: none;
-            }
-            #camera-button, #switch-camera-button {
-                background-color: #2E8B57;
-                color: white;
-                padding: 8px 16px;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 16px;
-            }
-            #camera-button:hover, #switch-camera-button:hover {
-                background-color: #3CB371;
-            }
-            .placeholder-text {
-                text-align: center;
-                padding: 40px 0;
-                color: #666;
-            }
-            #captured-preview {
-                display: none;
-                width: 100%;
-                max-height: 450px;
-                object-fit: contain;
-                border-radius: 8px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="camera-container">
-            <video id="video-element" autoplay playsinline></video>
-            <canvas id="canvas-element"></canvas>
-            <img id="captured-preview" />
-            <div class="placeholder-text" id="camera-placeholder">Camera loading...</div>
-            <div class="camera-controls">
-                <button id="camera-button" style="display:none;">Capture Photo</button>
-                <button id="switch-camera-button" style="display:none;">Switch Camera</button>
-            </div>
-        </div>
-
-        <script>
-            // Global variables
-            const videoElement = document.getElementById('video-element');
-            const canvasElement = document.getElementById('canvas-element');
-            const capturedPreview = document.getElementById('captured-preview');
-            const cameraButton = document.getElementById('camera-button');
-            const switchCameraButton = document.getElementById('switch-camera-button');
-            const placeholder = document.getElementById('camera-placeholder');
-            let stream = null;
-            let facingMode = "environment"; // Start with back camera
-            let capturedImage = null;
-            
-            // Initialize the camera as soon as the page loads
-            initCamera();
-            
-            // Initialize the camera
-            async function initCamera() {
-                try {
-                    // Try to get access to the back camera first
-                    const constraints = {
-                        video: {
-                            facingMode: facingMode,
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    };
-                    
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    videoElement.srcObject = stream;
-                    videoElement.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    cameraButton.style.display = 'inline-block';
-                    
-                    // Check if multiple cameras are available
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                    
-                    if (videoDevices.length > 1) {
-                        switchCameraButton.style.display = 'inline-block';
-                    }
-                    
-                } catch (error) {
-                    console.error('Error accessing camera:', error);
-                    placeholder.textContent = 'Error accessing camera. Please check permissions.';
-                    placeholder.style.color = 'red';
-                }
-            }
-            
-            // Switch between front and back cameras
-            switchCameraButton.addEventListener('click', async () => {
-                if (stream) {
-                    // Stop all tracks in the current stream
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                
-                // Toggle facing mode
-                facingMode = facingMode === "environment" ? "user" : "environment";
-                placeholder.textContent = 'Switching camera...';
-                placeholder.style.display = 'block';
-                videoElement.style.display = 'none';
-                
-                try {
-                    const constraints = {
-                        video: {
-                            facingMode: facingMode,
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
-                        }
-                    };
-                    
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    videoElement.srcObject = stream;
-                    videoElement.style.display = 'block';
-                    placeholder.style.display = 'none';
-                    
-                } catch (error) {
-                    console.error('Error switching camera:', error);
-                    placeholder.textContent = 'Error switching camera.';
-                    placeholder.style.color = 'red';
-                }
-            });
-            
-            // Capture a photo when the button is clicked
-            cameraButton.addEventListener('click', () => {
-                if (!stream) return;
-                
-                const context = canvasElement.getContext('2d');
-                canvasElement.width = videoElement.videoWidth;
-                canvasElement.height = videoElement.videoHeight;
-                context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
-                
-                // Convert canvas to data URL
-                capturedImage = canvasElement.toDataURL('image/jpeg');
-                
-                // Show preview of captured image
-                capturedPreview.src = capturedImage;
-                capturedPreview.style.display = 'block';
-                videoElement.style.display = 'none';
-                
-                // Send to Streamlit
-                window.parent.postMessage({
-                    type: "streamlit:setComponentValue",
-                    value: capturedImage
-                }, "*");
-            });
-        </script>
-    </body>
-    </html>
-    """
-    
-    # Create a key for session state to store our captured image
-    if 'captured_image' not in st.session_state:
-        st.session_state.captured_image = None
-    
-    # Use streamlit components v1 to create the HTML component
-    captured_image = components.html(
-        custom_camera_html,
-        height=600,
-        scrolling=False
-    )
-    
-    # If we got a result (captured image), store it in session state
-    if captured_image:
-        st.session_state.captured_image = captured_image
-    
-    # Return the captured image
-    return st.session_state.captured_image
-
-
 def main():
     detector = PlantDiseaseDetector()
     if not detector.load_trained_model():
@@ -650,63 +422,191 @@ def main():
     # Add a decorative separator
     st.markdown("<hr style='border: 1px solid #ccc;' />", unsafe_allow_html=True) 
     
-    # Plant type selection with state management
-    plant_type = st.selectbox("Select Plant Type", [""] + PLANT_TYPES, key='plant_selector')
+    plant_type = st.selectbox("Select Plant Type", [""] + PLANT_TYPES)
     if plant_type:
         detector.set_plant_type(plant_type)
-        # Store the selected plant type in session state
-        st.session_state['selected_plant'] = plant_type
-    
+
     st.write("### Take a picture or upload an image of a leaf")
     
     tab1, tab2 = st.tabs(["Camera", "Upload"])
     
     with tab1:
-        st.write("#### Camera Input")
-        st.write("Please allow camera access when prompted. The app will try to use your rear camera by default.")
+        # Custom camera implementation with back camera support
+        st.markdown("""
+        <div class="camera-container">
+            <video id="video-element" autoplay playsinline></video>
+            <canvas id="canvas-element"></canvas>
+        </div>
+        """, unsafe_allow_html=True)
         
-captured_image = st.session_state.get("captured_image")
-
-if isinstance(captured_image, str) and ',' in captured_image:
-    try:
-        base64_data = captured_image.split(',')[1]
-        image_bytes = base64.b64decode(base64_data)
-        image = Image.open(BytesIO(image_bytes))
-        st.image(image, caption="Captured Image", use_column_width=True)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-            tmp_file.write(image_bytes)
-            image_path = tmp_file.name
-
-        with st.spinner('Analyzing image...'):
-            predicted_class, confidence, tips = detector.predict(image_path)
-
-        if predicted_class:
-            st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
-            st.markdown("---")
-            st.markdown("### Treatment Tips")
-            st.info(tips['treatment'])
-
-            st.markdown("### Prevention Advice")
-            st.warning(tips['prevention'])
-        else:
-            st.warning("Could not make a prediction. Please try another image.")
-
-    except Exception as e:
-        st.error(f"Error processing image: {str(e)}")
-        print(traceback.format_exc())
-else:
-    st.warning("No image captured. Please take a photo first.")
+        # JavaScript for camera handling
+        st.markdown("""
+        <script>
+            // Wait for DOM to load
+            document.addEventListener('DOMContentLoaded', function() {
+                const videoElement = document.getElementById('video-element');
+                const canvasElement = document.getElementById('canvas-element');
+                
+                // Set up canvas
+                canvasElement.width = 640;
+                canvasElement.height = 480;
+                
+                // Access the back camera by default
+                async function startCamera() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: { 
+                                facingMode: { exact: "environment" } // This forces the back camera
+                            },
+                            audio: false
+                        });
+                        videoElement.srcObject = stream;
+                    } catch (err) {
+                        // If back camera fails, try the default camera
+                        console.error("Back camera not available: ", err);
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({
+                                video: true,
+                                audio: false
+                            });
+                            videoElement.srcObject = stream;
+                            console.log("Using default camera");
+                        } catch (fallbackErr) {
+                            console.error("Camera access failed: ", fallbackErr);
+                            // Inform the user
+                            const cameraContainer = document.querySelector('.camera-container');
+                            cameraContainer.innerHTML = '<div style="color: red; text-align: center;">Camera access denied or not available. Please use the Upload tab.</div>';
+                        }
+                    }
+                }
+                
+                // Start camera when the page loads
+                startCamera();
+            });
+        </script>
+        """, unsafe_allow_html=True)
+        
+        # Capture button
+        capture_btn = st.button("Capture Image")
+        
+        # Handle the captured image
+        if 'camera_image' not in st.session_state:
+            st.session_state.camera_image = None
             
-            # Process the image
-            try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_file:
-                    tmp_file.write(image_data)
-                    image_path = tmp_file.name
+        # Let's use a simpler approach with a file uploader
+        if capture_btn:
+            st.markdown("""
+            <div id="capture-result" style="display:none"></div>
+            <script>
+                // Capture image when button is clicked
+                const videoElement = document.getElementById('video-element');
+                const canvasElement = document.getElementById('canvas-element');
+                const resultElement = document.getElementById('capture-result');
+                
+                if (videoElement && canvasElement) {
+                    // Set canvas dimensions
+                    canvasElement.width = videoElement.videoWidth || 640;
+                    canvasElement.height = videoElement.videoHeight || 480;
                     
-                    with st.spinner('Analyzing image...'):
-                        predicted_class, confidence, tips = detector.predict(image_path)
+                    // Draw video frame to canvas
+                    const context = canvasElement.getContext('2d');
+                    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
                     
+                    // Get base64 image data
+                    const imageData = canvasElement.toDataURL('image/jpeg');
+                    
+                    // Store the image in local storage for retrieval
+                    localStorage.setItem('capturedImage', imageData);
+                    
+                    // Signal that image is ready 
+                    resultElement.textContent = "Image captured!";
+                    resultElement.style.display = "block";
+                    
+                    // Force page reload to process the image
+                    window.location.reload();
+                }
+            </script>
+            """, unsafe_allow_html=True)
+        
+        # Check if there's a captured image in localStorage
+        captured_image = st.empty()
+        st.markdown("""
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check if we have a stored image
+                const capturedImage = localStorage.getItem('capturedImage');
+                if (capturedImage) {
+                    // Create an element to display the status
+                    const statusElement = document.createElement('div');
+                    statusElement.textContent = 'Processing captured image...';
+                    statusElement.style.color = '#2E8B57';
+                    statusElement.style.padding = '10px';
+                    statusElement.style.marginTop = '10px';
+                    statusElement.style.textAlign = 'center';
+                    
+                    // Find the correct container to append to (streamlit's structure)
+                    const containers = document.querySelectorAll('.element-container');
+                    if (containers.length > 0) {
+                        containers[containers.length - 1].appendChild(statusElement);
+                    }
+                    
+                    // Create a form element
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.enctype = 'multipart/form-data';
+                    
+                    // Create input for the image
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'camera_capture';
+                    input.value = capturedImage;
+                    
+                    // Append and submit
+                    form.appendChild(input);
+                    document.body.appendChild(form);
+                    
+                    // Convert base64 to blob for file upload
+                    fetch(capturedImage)
+                        .then(res => res.blob())
+                        .then(blob => {
+                            // Create a file from blob
+                            const file = new File([blob], "captured_image.jpg", {
+                                type: "image/jpeg"
+                            });
+                            
+                            // Create a file list to simulate a file upload
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            
+                            // Find the file uploader input element
+                            const fileInputs = document.querySelectorAll('input[type="file"]');
+                            if (fileInputs.length > 0) {
+                                // Set the files property
+                                fileInputs[0].files = dataTransfer.files;
+                                
+                                // Trigger a change event
+                                const event = new Event('change', { bubbles: true });
+                                fileInputs[0].dispatchEvent(event);
+                                
+                                // Clear the stored image
+                                localStorage.removeItem('capturedImage');
+                            }
+                        });
+                }
+            });
+        </script>
+        """, unsafe_allow_html=True)
+        
+        # Add a hidden file uploader for camera captures
+        camera_file = st.file_uploader("Camera Capture", type=["jpg", "png"], key="camera_capture", label_visibility="collapsed")
+        
+        if camera_file is not None:
+            st.image(camera_file, caption="Captured Image", use_container_width=True)
+            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                tmp_file.write(camera_file.getvalue())
+                image_path = tmp_file.name
+                try:
+                    predicted_class, confidence, tips = detector.predict(image_path)
                     if predicted_class:
                         st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
                         st.markdown("---")
@@ -717,22 +617,20 @@ else:
                         st.warning(tips['prevention'])
                     else:
                         st.warning("Could not make a prediction. Please try another image.")
-            except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
-                st.error("Please check the console for more details.")
-                print(f"Error: {traceback.format_exc()}")
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
+                    st.error("Please check the console for more details.")
+                    print(f"Error: {traceback.format_exc()}")
     
     with tab2:
         uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
         if uploaded_file is not None:
-            st.image(uploaded_file, caption="Uploaded Image", use_container_width =True)
+            st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 image_path = tmp_file.name
                 try:
-                    with st.spinner('Analyzing image...'):
-                        predicted_class, confidence, tips = detector.predict(image_path)
-                    
+                    predicted_class, confidence, tips = detector.predict(image_path)
                     if predicted_class:
                         st.success(f"Result: {predicted_class} ({confidence*100:.2f}% confidence)")
                         st.markdown("---")
