@@ -708,7 +708,7 @@ def main():
     with tab2:
         uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
         if uploaded_file is not None:
-            st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+            st.image(uploaded_file, caption="Uploaded Image", use_container_width =True)
             with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
                 image_path = tmp_file.name
