@@ -697,13 +697,6 @@ if isinstance(captured_image, str) and ',' in captured_image:
         print(traceback.format_exc())
 else:
     st.warning("No image captured. Please take a photo first.")
-
-
-            image_bytes = base64.b64decode(base64_data)
-            image = Image.open(io.BytesIO(image_bytes))
-
-            # Display image
-            st.image(image, caption="Captured Image", use_column_width=True)
             
             # Process the image
             try:
